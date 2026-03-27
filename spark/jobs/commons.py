@@ -24,9 +24,10 @@ PG_PASS = os.getenv("POSTGRES_PASSWORD", "postgres")
 JDBC_URL = f"jdbc:postgresql://{PG_HOST}:{PG_PORT}/{PG_DB}"
 JDBC_DRIVER = "org.postgresql.Driver"
 JDBC_PROPS = {
-    "user":     PG_USER,
-    "password": PG_PASS,
-    "driver":   JDBC_DRIVER,
+    "user":       PG_USER,
+    "password":   PG_PASS,
+    "driver":     JDBC_DRIVER,
+    "stringtype": "unspecified",  # permite cast automatico VARCHAR -> JSONB no PostgreSQL
 }
 
 
