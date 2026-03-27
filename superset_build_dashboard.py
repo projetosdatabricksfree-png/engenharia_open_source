@@ -29,7 +29,7 @@ with app.app_context():
             database_name="Brasileirao",
             sqlalchemy_uri="postgresql+psycopg2://admin:admin@postgres:5432/brasileirao",
             expose_in_sqllab=True,
-            allow_run_async=True,
+            allow_run_async=False,  # sem Celery worker; queries sincronas
             allow_ctas=False,
             allow_cvas=False,
             allow_dml=False,
