@@ -3,11 +3,12 @@ DAG: previsao_brasileirao_spark
 Pipeline completo: Spark (via docker exec) + dbt + PostgreSQL.
 
 Fluxo:
-  [Spark] bronze_ingestao
-       >> [dbt]  silver + gold
-       >> [Spark] diamond_training
-       >> [Spark] diamond_inference
-       >> [dbt]  diamond marts
+  [Spark] 01_bronze_ingestao    -- ingesta raw da API Cartola FC
+       >> [Spark] 02_silver_transform  -- limpeza e normalizacao
+       >> [Spark] 03_gold_features     -- feature store (ELO, medias moveis, momentum)
+       >> [Spark] 04_gold_ml           -- treino RandomForest + inferencia (previsoes)
+       >> [dbt]   gold marts           -- mart_previsoes_proximas, mart_tabela_classificacao,
+                                          mart_desempenho_modelo
 """
 
 import os
@@ -21,7 +22,6 @@ SPARK_SUBMIT    = "/opt/spark/bin/spark-submit"
 SPARK_MASTER    = "spark://spark-master:7077"
 JOBS_DIR        = "/opt/spark-jobs"
 JDBC_JAR        = "/opt/spark/jars/postgresql-42.7.3.jar"
-DBT_DIR         = "/opt/dbt"
 
 PG_HOST = os.getenv("POSTGRES_HOST",     "postgres")
 PG_PORT = os.getenv("POSTGRES_PORT",     "5433")
@@ -36,6 +36,7 @@ PG_ENV_INLINE = (
     f"POSTGRES_USER={PG_USER} "
     f"POSTGRES_PASSWORD={PG_PASS}"
 )
+
 
 def spark_submit_cmd(job_file: str, app_name: str) -> str:
     """Monta comando docker exec spark-submit."""
@@ -52,6 +53,7 @@ def spark_submit_cmd(job_file: str, app_name: str) -> str:
         f"{JOBS_DIR}/{job_file}"
     )
 
+
 def dbt_run_cmd(select: str) -> str:
     return (
         f"docker exec -e POSTGRES_HOST={PG_HOST} "
@@ -62,6 +64,7 @@ def dbt_run_cmd(select: str) -> str:
         f"dbt dbt run --select {select} "
         f"--profiles-dir . --project-dir . || true"
     )
+
 
 default_args = {
     "owner":            "engenharia_dados",
@@ -91,30 +94,25 @@ def previsao_brasileirao_spark_dag():
 
     silver = BashOperator(
         task_id="02_silver_transform",
-        bash_command=dbt_run_cmd("silver"),
+        bash_command=spark_submit_cmd("02_silver_transform.py", "silver_transform"),
     )
 
     gold = BashOperator(
         task_id="03_gold_features",
+        bash_command=spark_submit_cmd("03_gold_features.py", "gold_features"),
+    )
+
+    gold_ml = BashOperator(
+        task_id="04_gold_ml",
+        bash_command=spark_submit_cmd("04_gold_ml.py", "gold_ml"),
+    )
+
+    gold_marts = BashOperator(
+        task_id="05_gold_dbt_marts",
         bash_command=dbt_run_cmd("gold"),
     )
 
-    training = BashOperator(
-        task_id="04_diamond_training",
-        bash_command=spark_submit_cmd("04_diamond_training.py", "diamond_training"),
-    )
-
-    inference = BashOperator(
-        task_id="05_diamond_inference",
-        bash_command=spark_submit_cmd("05_diamond_inference.py", "diamond_inference"),
-    )
-
-    marts = BashOperator(
-        task_id="06_diamond_marts",
-        bash_command=dbt_run_cmd("diamond"),
-    )
-
-    bronze >> silver >> gold >> training >> inference >> marts
+    bronze >> silver >> gold >> gold_ml >> gold_marts
 
 
 previsao_brasileirao_spark_dag()

@@ -22,7 +22,3 @@ models:
       +schema: gold
       +materialized: table
       +tags: ["gold"]
-    diamond:
-      +schema: diamond
-      +materialized: table
-      +tags: ["diamond"]

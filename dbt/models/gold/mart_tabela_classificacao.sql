@@ -1,18 +1,13 @@
 {{
   config(
     materialized = 'table',
-    schema       = 'diamond',
+    schema       = 'gold',
     alias        = 'mart_tabela_classificacao'
   )
 }}
 
-/*
-  Mart: Tabela de classificacao completa com risco de rebaixamento
-  e posicionamento nos grupos (libertadores, sul-americana, rebaixamento).
-*/
-
 with rebaixamento as (
-    select * from {{ source('diamond_raw', 'analise_rebaixamento') }}
+    select * from {{ source('gold_ml', 'analise_rebaixamento') }}
 ),
 
 clubes as (
@@ -77,20 +72,19 @@ final as (
         round(cast(prob_rebaixamento * 100 as numeric), 1) as prob_rebaixamento_pct,
         zona_rebaixamento,
 
-        -- Classificacao para competicoes continentais
         case
-            when posicao between 1 and 4  then 'Libertadores (fase de grupos)'
-            when posicao between 5 and 6  then 'Libertadores (pre-fase)'
-            when posicao between 7 and 12 then 'Sul-Americana'
+            when posicao between 1 and 4   then 'Libertadores (fase de grupos)'
+            when posicao between 5 and 6   then 'Libertadores (pre-fase)'
+            when posicao between 7 and 12  then 'Sul-Americana'
             when posicao between 17 and 20 then 'Rebaixamento'
             else 'Meio de tabela'
         end as situacao,
 
         case
-            when posicao between 1  and 4  then '#1a7a1a'   -- verde escuro
-            when posicao between 5  and 6  then '#2e8b57'   -- verde medio
-            when posicao between 7  and 12 then '#4682b4'   -- azul
-            when posicao between 17 and 20 then '#cc2222'   -- vermelho
+            when posicao between 1  and 4  then '#1a7a1a'
+            when posicao between 5  and 6  then '#2e8b57'
+            when posicao between 7  and 12 then '#4682b4'
+            when posicao between 17 and 20 then '#cc2222'
             else '#666666'
         end as cor_situacao
 

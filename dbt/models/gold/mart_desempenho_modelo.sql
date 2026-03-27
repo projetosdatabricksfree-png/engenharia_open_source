@@ -1,18 +1,13 @@
 {{
   config(
     materialized = 'table',
-    schema       = 'diamond',
+    schema       = 'gold',
     alias        = 'mart_desempenho_modelo'
   )
 }}
 
-/*
-  Mart: Acuracia e desempenho do modelo de ML por rodada.
-  Permite monitorar degradacao do modelo ao longo do tempo.
-*/
-
 with validadas as (
-    select * from {{ source('diamond_raw', 'previsoes_validadas') }}
+    select * from {{ source('gold_ml', 'previsoes_validadas') }}
 ),
 
 por_rodada as (
@@ -25,7 +20,6 @@ por_rodada as (
             / nullif(count(*), 0) * 100
         , 1)                                                   as acuracia_pct,
 
-        -- Acuracia por tipo de resultado
         round(avg(case when resultado_real = 'casa'      and acerto then 1.0
                        when resultado_real = 'casa'               then 0.0 end) * 100, 1)
                                                                as acuracia_casa_pct,
@@ -36,7 +30,6 @@ por_rodada as (
                        when resultado_real = 'visitante'          then 0.0 end) * 100, 1)
                                                                as acuracia_visitante_pct,
 
-        -- Confianca media nas previsoes corretas vs incorretas
         round(cast(avg(case when acerto then prob_casa end) * 100 as numeric), 1)     as conf_media_acerto,
         round(cast(avg(case when not acerto then prob_casa end) * 100 as numeric), 1) as conf_media_erro
 

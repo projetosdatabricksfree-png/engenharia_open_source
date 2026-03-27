@@ -1,5 +1,5 @@
 -- ============================================================
--- Medallion Architecture: bronze > silver > gold > diamond
+-- Medallion Architecture: bronze > silver > gold
 -- Banco: brasileirao
 -- ============================================================
 \connect brasileirao;
@@ -11,7 +11,6 @@ CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 CREATE SCHEMA IF NOT EXISTS bronze;
 CREATE SCHEMA IF NOT EXISTS silver;
 CREATE SCHEMA IF NOT EXISTS gold;
-CREATE SCHEMA IF NOT EXISTS diamond;
 
 -- ============================================================
 -- BRONZE: dados brutos da API (append-only)
@@ -95,8 +94,10 @@ CREATE TABLE IF NOT EXISTS silver.estatisticas_jogador_partida (
 );
 
 -- ============================================================
--- GOLD: feature store para machine learning
+-- GOLD: feature store, ML e marts de BI
 -- ============================================================
+
+-- Feature store basico
 CREATE TABLE IF NOT EXISTS gold.feature_store (
     id                  BIGSERIAL PRIMARY KEY,
     rodada              INTEGER NOT NULL,
@@ -113,6 +114,7 @@ CREATE TABLE IF NOT EXISTS gold.feature_store (
     UNIQUE (rodada, clube_id)
 );
 
+-- Feature store avancado (ELO, medias moveis, momentum)
 CREATE TABLE IF NOT EXISTS gold.feature_store_enhanced (
     id                       BIGSERIAL PRIMARY KEY,
     rodada                   INTEGER NOT NULL,
@@ -128,10 +130,8 @@ CREATE TABLE IF NOT EXISTS gold.feature_store_enhanced (
     UNIQUE (rodada, clube_id)
 );
 
--- ============================================================
--- DIAMOND: previsoes, modelos e auditoria
--- ============================================================
-CREATE TABLE IF NOT EXISTS diamond.previsoes_proximas_partidas (
+-- Outputs do pipeline ML (Spark → gold)
+CREATE TABLE IF NOT EXISTS gold.previsoes_proximas_partidas (
     id              BIGSERIAL PRIMARY KEY,
     rodada          INTEGER NOT NULL,
     clube_casa_id   INTEGER NOT NULL,
@@ -144,10 +144,10 @@ CREATE TABLE IF NOT EXISTS diamond.previsoes_proximas_partidas (
     previsao        VARCHAR(20),
     confianca       DOUBLE PRECISION,
     modelo_versao   VARCHAR(50),
-    created_at      TIMESTAMP DEFAULT NOW()
+    processed_at    TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS diamond.previsoes_validadas (
+CREATE TABLE IF NOT EXISTS gold.previsoes_validadas (
     id              BIGSERIAL PRIMARY KEY,
     rodada          INTEGER NOT NULL,
     clube_casa_id   INTEGER NOT NULL,
@@ -160,10 +160,10 @@ CREATE TABLE IF NOT EXISTS diamond.previsoes_validadas (
     prob_casa       DOUBLE PRECISION,
     prob_empate     DOUBLE PRECISION,
     prob_visitante  DOUBLE PRECISION,
-    validated_at    TIMESTAMP DEFAULT NOW()
+    processed_at    TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS diamond.analise_rebaixamento (
+CREATE TABLE IF NOT EXISTS gold.analise_rebaixamento (
     id                   BIGSERIAL PRIMARY KEY,
     clube_id             INTEGER NOT NULL,
     nome_clube           VARCHAR(200),
@@ -177,10 +177,10 @@ CREATE TABLE IF NOT EXISTS diamond.analise_rebaixamento (
     UNIQUE (clube_id)
 );
 
-CREATE TABLE IF NOT EXISTS diamond.modelos_registry (
+CREATE TABLE IF NOT EXISTS gold.modelos_registry (
     id             BIGSERIAL PRIMARY KEY,
     modelo_nome    VARCHAR(200) NOT NULL,
-    versao         VARCHAR(50) NOT NULL,
+    versao         VARCHAR(50)  NOT NULL,
     algoritmo      VARCHAR(100),
     acuracia       DOUBLE PRECISION,
     f1_score       DOUBLE PRECISION,
@@ -189,10 +189,11 @@ CREATE TABLE IF NOT EXISTS diamond.modelos_registry (
     rodada_teste   INTEGER,
     parametros     JSONB,
     ativo          BOOLEAN DEFAULT FALSE,
-    created_at     TIMESTAMP DEFAULT NOW()
+    processed_at   TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS diamond.pipeline_executions (
+-- Tabelas de auditoria e qualidade de dados
+CREATE TABLE IF NOT EXISTS gold.pipeline_executions (
     id                 BIGSERIAL PRIMARY KEY,
     run_id             UUID DEFAULT uuid_generate_v4(),
     pipeline_name      VARCHAR(200) NOT NULL,
@@ -205,7 +206,7 @@ CREATE TABLE IF NOT EXISTS diamond.pipeline_executions (
     error_message      TEXT
 );
 
-CREATE TABLE IF NOT EXISTS diamond.data_quality_checks (
+CREATE TABLE IF NOT EXISTS gold.data_quality_checks (
     id               BIGSERIAL PRIMARY KEY,
     check_name       VARCHAR(200) NOT NULL,
     tabela           VARCHAR(200),
@@ -213,15 +214,15 @@ CREATE TABLE IF NOT EXISTS diamond.data_quality_checks (
     records_checked  INTEGER,
     records_failed   INTEGER,
     detalhe          TEXT,
-    checked_at       TIMESTAMP DEFAULT NOW()
+    processed_at     TIMESTAMP DEFAULT NOW()
 );
 
--- Indices para performance nas consultas do BI
-CREATE INDEX IF NOT EXISTS idx_previsoes_rodada   ON diamond.previsoes_proximas_partidas (rodada);
-CREATE INDEX IF NOT EXISTS idx_rebaixamento_pos   ON diamond.analise_rebaixamento (posicao);
-CREATE INDEX IF NOT EXISTS idx_validadas_rodada   ON diamond.previsoes_validadas (rodada);
-CREATE INDEX IF NOT EXISTS idx_pipeline_status    ON diamond.pipeline_executions (status, started_at DESC);
-CREATE INDEX IF NOT EXISTS idx_feature_rodada     ON gold.feature_store_enhanced (rodada, clube_id);
-CREATE INDEX IF NOT EXISTS idx_partidas_rodada    ON silver.partidas (rodada);
+-- Indices
+CREATE INDEX IF NOT EXISTS idx_feature_rodada       ON gold.feature_store_enhanced (rodada, clube_id);
+CREATE INDEX IF NOT EXISTS idx_previsoes_rodada     ON gold.previsoes_proximas_partidas (rodada);
+CREATE INDEX IF NOT EXISTS idx_validadas_rodada     ON gold.previsoes_validadas (rodada);
+CREATE INDEX IF NOT EXISTS idx_rebaixamento_pos     ON gold.analise_rebaixamento (posicao);
+CREATE INDEX IF NOT EXISTS idx_pipeline_status      ON gold.pipeline_executions (status, started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_partidas_rodada      ON silver.partidas (rodada);
 
 SELECT 'Medallion schemas criados com sucesso.' AS status;

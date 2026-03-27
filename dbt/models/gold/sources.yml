@@ -1,9 +1,9 @@
 version: 2
 
 sources:
-  - name: diamond_raw
-    schema: diamond
-    description: "Outputs brutos do pipeline Spark ML (treino e inferencia)"
+  - name: gold_ml
+    schema: gold
+    description: "Outputs do pipeline Spark ML (treino e inferencia) escritos na camada gold"
     tables:
       - name: previsoes_proximas_partidas
         description: "Previsoes geradas pelo modelo para as proximas partidas"

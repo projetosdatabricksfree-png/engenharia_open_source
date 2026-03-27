@@ -77,7 +77,7 @@ def log_pipeline_execution(stage: str, status: str, records: int = 0, error: str
         )
         cur = conn.cursor()
         cur.execute("""
-            INSERT INTO diamond.pipeline_executions
+            INSERT INTO gold.pipeline_executions
                 (pipeline_name, stage, status, started_at, finished_at, records_processed, error_message)
             VALUES (%s, %s, %s, NOW(), NOW(), %s, %s)
         """, ("previsao_brasileirao", stage, status, records, error))
@@ -98,7 +98,7 @@ def log_dq_check(check_name: str, tabela: str, status: str,
         )
         cur = conn.cursor()
         cur.execute("""
-            INSERT INTO diamond.data_quality_checks
+            INSERT INTO gold.data_quality_checks
                 (check_name, tabela, status, records_checked, records_failed, detalhe)
             VALUES (%s, %s, %s, %s, %s, %s)
         """, (check_name, tabela, status, checked, failed, detalhe))
