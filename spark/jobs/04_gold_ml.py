@@ -319,7 +319,7 @@ def compute_relegation_risk(spark):
 
     tabela_atual = (
         tabela.filter(tabela.rodada == ultima_rodada)
-        .join(clubes, tabela.clube_id == clubes.clube_id, "left")
+        .join(clubes.select("clube_id", "nome"), "clube_id", "left")
         .withColumn("jogos", tabela.vitorias + tabela.empates + tabela.derrotas)
         .orderBy(F.desc("pontos_acumulados"), F.desc("vitorias"), F.desc("saldo_gols"))
     )

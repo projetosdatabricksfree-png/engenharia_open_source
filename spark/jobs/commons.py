@@ -56,16 +56,22 @@ def read_jdbc(spark: SparkSession, table: str):
 
 
 def write_jdbc(df, table: str, mode: str = "overwrite"):
-    """Escreve um DataFrame no PostgreSQL via JDBC."""
-    (
+    """Escreve um DataFrame no PostgreSQL via JDBC.
+
+    Quando mode='overwrite', usa truncate=true para preservar views e
+    foreign keys dependentes (evita DROP TABLE).
+    """
+    writer = (
         df.write
         .format("jdbc")
         .option("url", JDBC_URL)
         .option("dbtable", table)
         .options(**JDBC_PROPS)
         .mode(mode)
-        .save()
     )
+    if mode == "overwrite":
+        writer = writer.option("truncate", "true")
+    writer.save()
     logger.info(f"[OK] {df.count()} registros escritos em {table}")
 
 

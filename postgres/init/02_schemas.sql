@@ -217,6 +217,78 @@ CREATE TABLE IF NOT EXISTS gold.data_quality_checks (
     processed_at     TIMESTAMP DEFAULT NOW()
 );
 
+-- ============================================================
+-- GOLD: Views analíticas (recriadas no init para persistência)
+-- ============================================================
+CREATE OR REPLACE VIEW gold.vw_classificacao AS
+WITH ultima_rodada AS (SELECT MAX(rodada) AS rodada FROM gold.feature_store)
+SELECT
+    ROW_NUMBER() OVER (ORDER BY fs.pontos_acumulados DESC, fs.vitorias DESC, fs.saldo_gols DESC, fs.gols_marcados DESC) AS posicao,
+    fs.clube_id,
+    c.nome,
+    c.abreviacao,
+    (fs.vitorias + fs.empates + fs.derrotas) AS jogos,
+    fs.pontos_acumulados  AS pontos,
+    fs.vitorias,
+    fs.empates,
+    fs.derrotas,
+    fs.gols_marcados      AS gols_pro,
+    fs.gols_sofridos      AS gols_contra,
+    fs.saldo_gols,
+    fs.aproveitamento_pct AS aproveitamento
+FROM gold.feature_store fs
+JOIN silver.clubes c ON fs.clube_id = c.clube_id
+JOIN ultima_rodada ur ON fs.rodada = ur.rodada;
+
+CREATE OR REPLACE VIEW gold.vw_elo_ranking AS
+WITH ultima_rodada AS (SELECT MAX(rodada) AS rodada FROM gold.feature_store)
+SELECT
+    ROW_NUMBER() OVER (ORDER BY fs.pontos_acumulados DESC, fs.aproveitamento_pct DESC) AS ranking,
+    fs.clube_id,
+    c.nome,
+    c.abreviacao,
+    fs.pontos_acumulados  AS pontos,
+    fs.aproveitamento_pct AS aproveitamento,
+    fs.vitorias,
+    fs.empates,
+    fs.derrotas
+FROM gold.feature_store fs
+JOIN silver.clubes c ON fs.clube_id = c.clube_id
+JOIN ultima_rodada ur ON fs.rodada = ur.rodada
+ORDER BY pontos DESC;
+
+CREATE OR REPLACE VIEW gold.vw_previsoes AS
+SELECT
+    p.rodada,
+    p.nome_casa,
+    p.nome_vis,
+    p.prob_casa,
+    p.prob_empate,
+    p.prob_visitante,
+    p.previsao,
+    p.confianca,
+    p.modelo_versao,
+    p.processed_at
+FROM gold.previsoes_proximas_partidas p
+ORDER BY p.rodada, p.confianca DESC;
+
+CREATE OR REPLACE VIEW gold.vw_desempenho_modelo AS
+WITH validadas AS (
+    SELECT
+        rodada,
+        COUNT(*)                                                        AS total,
+        SUM(CASE WHEN previsao = resultado_real THEN 1 ELSE 0 END)     AS acertos
+    FROM gold.previsoes_validadas
+    GROUP BY rodada
+)
+SELECT
+    rodada,
+    total                                              AS partidas,
+    acertos,
+    ROUND(acertos::NUMERIC / NULLIF(total,0) * 100, 1) AS acuracia_pct
+FROM validadas
+ORDER BY rodada;
+
 -- Indices
 CREATE INDEX IF NOT EXISTS idx_feature_rodada       ON gold.feature_store_enhanced (rodada, clube_id);
 CREATE INDEX IF NOT EXISTS idx_previsoes_rodada     ON gold.previsoes_proximas_partidas (rodada);
