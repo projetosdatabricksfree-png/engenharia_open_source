@@ -1,0 +1,34 @@
+version: 2
+
+models:
+  - name: stg_partidas
+    description: "Partidas normalizadas com resultado calculado (casa/visitante/empate)"
+    columns:
+      - name: rodada
+        tests: [not_null]
+      - name: clube_casa_id
+        tests: [not_null]
+      - name: clube_vis_id
+        tests: [not_null]
+      - name: resultado
+        tests:
+          - accepted_values:
+              values: ['casa', 'visitante', 'empate']
+              config:
+                where: "resultado is not null"
+
+  - name: stg_clubes
+    description: "Catalogo de clubes deduplificado"
+    columns:
+      - name: clube_id
+        tests: [unique, not_null]
+      - name: nome
+        tests: [not_null]
+
+  - name: stg_jogadores
+    description: "Estatisticas de jogadores por rodada"
+    columns:
+      - name: atleta_id
+        tests: [not_null]
+      - name: rodada
+        tests: [not_null]

@@ -1,0 +1,28 @@
+# Ambientes
+.env
+*.pyc
+__pycache__/
+.venv/
+venv/
+
+# dbt
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+
+# Spark
+spark/logs/
+/tmp/
+
+# Docker volumes (não versionar dados)
+*.db
+*.sqlite
+
+# Secrets
+*.key
+*.pem
+secrets/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,59 @@
+services:
+  superset-init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: superset-init
+    restart: "no"
+    environment:
+      SUPERSET_SECRET_KEY:     ${SUPERSET_SECRET_KEY:-admin}
+      SUPERSET_ADMIN_USER:     ${SUPERSET_ADMIN_USER:-admin}
+      SUPERSET_ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD:-admin}
+      SUPERSET_ADMIN_EMAIL:    ${SUPERSET_ADMIN_EMAIL:-admin@brasileirao.local}
+      POSTGRES_HOST:           ${POSTGRES_HOST:-postgres}
+      POSTGRES_USER:           ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD:       ${POSTGRES_PASSWORD:-admin}
+      PYTHONPATH:              /app/pythonpath
+      SUPERSET_CONFIG_PATH:    /app/pythonpath/superset_config.py
+    command: ["/app/init_superset.sh"]
+    networks:
+      - stack-net
+
+  superset:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: superset
+    restart: unless-stopped
+    ports:
+      - "8088:8088"
+    environment:
+      SUPERSET_SECRET_KEY:  ${SUPERSET_SECRET_KEY:-admin}
+      POSTGRES_HOST:        ${POSTGRES_HOST:-postgres}
+      POSTGRES_USER:        ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD:    ${POSTGRES_PASSWORD:-admin}
+      PYTHONPATH:           /app/pythonpath
+      SUPERSET_CONFIG_PATH: /app/pythonpath/superset_config.py
+    command: ["/usr/bin/run-server.sh"]
+    volumes:
+      - superset_data:/app/superset/uploads
+    networks:
+      - stack-net
+    depends_on:
+      superset-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088/health"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 60s
+
+volumes:
+  superset_data:
+    name: stack-superset-data
+
+networks:
+  stack-net:
+    external: true
+    name: stack-net

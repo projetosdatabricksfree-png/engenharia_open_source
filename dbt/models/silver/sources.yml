@@ -1,0 +1,23 @@
+version: 2
+
+sources:
+  - name: bronze
+    schema: bronze
+    description: "Camada Bronze: dados brutos ingeridos pelo Spark da API Cartola FC"
+    tables:
+      - name: partidas_raw
+        description: "Partidas brutas com payload JSON original"
+        columns:
+          - name: id
+            tests: [unique, not_null]
+          - name: rodada
+            tests: [not_null]
+      - name: clubes_info_raw
+        description: "Informacoes brutas dos clubes"
+        columns:
+          - name: clube_id
+            tests: [not_null]
+      - name: jogadores_status_raw
+        description: "Status dos jogadores no mercado"
+      - name: pontuacoes_historico_raw
+        description: "Pontuacoes historicas por rodada"

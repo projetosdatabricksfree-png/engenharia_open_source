@@ -1,0 +1,19 @@
+version: 2
+
+sources:
+  - name: diamond_raw
+    schema: diamond
+    description: "Outputs brutos do pipeline Spark ML (treino e inferencia)"
+    tables:
+      - name: previsoes_proximas_partidas
+        description: "Previsoes geradas pelo modelo para as proximas partidas"
+      - name: previsoes_validadas
+        description: "Previsoes validadas contra resultados reais"
+      - name: analise_rebaixamento
+        description: "Analise de risco de rebaixamento por clube"
+      - name: modelos_registry
+        description: "Catalogo de modelos treinados com metricas"
+      - name: pipeline_executions
+        description: "Log de execucoes do pipeline"
+      - name: data_quality_checks
+        description: "Resultados dos checks de qualidade de dados"

@@ -1,0 +1,35 @@
+version: 2
+
+models:
+  - name: mart_previsoes_proximas
+    description: "Previsoes enriquecidas com nomes, ELO e contexto de tabela para Superset"
+    columns:
+      - name: rodada
+        tests: [not_null]
+      - name: nome_casa
+        tests: [not_null]
+      - name: nome_visitante
+        tests: [not_null]
+      - name: prob_casa_pct
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+      - name: previsao
+        tests:
+          - accepted_values:
+              values: ['casa', 'visitante', 'empate']
+
+  - name: mart_tabela_classificacao
+    description: "Tabela de classificacao completa com risco de rebaixamento"
+    columns:
+      - name: posicao
+        tests: [unique, not_null]
+      - name: clube
+        tests: [not_null]
+
+  - name: mart_desempenho_modelo
+    description: "Metricas de desempenho do modelo ML por rodada"
+    columns:
+      - name: rodada
+        tests: [unique, not_null]

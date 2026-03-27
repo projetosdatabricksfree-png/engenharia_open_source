@@ -1,0 +1,29 @@
+version: 2
+
+models:
+  - name: feat_tabela_clubes
+    description: "Feature store basico: tabela acumulada por rodada com V/E/D, gols e aproveitamento"
+    columns:
+      - name: rodada
+        tests: [not_null]
+      - name: clube_id
+        tests: [not_null]
+      - name: pontos_acumulados
+        tests: [not_null]
+      - name: aproveitamento_pct
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              config:
+                severity: warn
+
+  - name: feat_store_enhanced
+    description: "Feature store avancado com ELO, medias moveis e momentum para ML"
+    columns:
+      - name: rodada
+        tests: [not_null]
+      - name: clube_id
+        tests: [not_null]
+      - name: elo_rating
+        tests: [not_null]
