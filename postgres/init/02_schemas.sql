@@ -11,6 +11,7 @@ CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 CREATE SCHEMA IF NOT EXISTS bronze;
 CREATE SCHEMA IF NOT EXISTS silver;
 CREATE SCHEMA IF NOT EXISTS gold;
+CREATE SCHEMA IF NOT EXISTS diamond; -- mantido como alias para gold (backwards compat)
 
 -- ============================================================
 -- BRONZE: dados brutos da API (append-only)
@@ -296,5 +297,17 @@ CREATE INDEX IF NOT EXISTS idx_validadas_rodada     ON gold.previsoes_validadas 
 CREATE INDEX IF NOT EXISTS idx_rebaixamento_pos     ON gold.analise_rebaixamento (posicao);
 CREATE INDEX IF NOT EXISTS idx_pipeline_status      ON gold.pipeline_executions (status, started_at DESC);
 CREATE INDEX IF NOT EXISTS idx_partidas_rodada      ON silver.partidas (rodada);
+
+-- ============================================================
+-- DIAMOND: views de compatibilidade apontando para gold
+-- (diamond foi unificado em gold; este bloco garante que
+--  queries legadas continuem funcionando)
+-- ============================================================
+CREATE OR REPLACE VIEW diamond.previsoes_proximas_partidas AS SELECT * FROM gold.previsoes_proximas_partidas;
+CREATE OR REPLACE VIEW diamond.previsoes_validadas         AS SELECT * FROM gold.previsoes_validadas;
+CREATE OR REPLACE VIEW diamond.analise_rebaixamento        AS SELECT * FROM gold.analise_rebaixamento;
+CREATE OR REPLACE VIEW diamond.modelos_registry            AS SELECT * FROM gold.modelos_registry;
+CREATE OR REPLACE VIEW diamond.pipeline_executions         AS SELECT * FROM gold.pipeline_executions;
+CREATE OR REPLACE VIEW diamond.data_quality_checks         AS SELECT * FROM gold.data_quality_checks;
 
 SELECT 'Medallion schemas criados com sucesso.' AS status;

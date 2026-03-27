@@ -38,8 +38,29 @@ def transform_partidas(spark):
         .dropDuplicates(["rodada", "clube_casa_id", "clube_vis_id"])
     )
 
-    write_jdbc(df_silver, "silver.partidas", mode="overwrite")
-    return df_silver.count()
+    n = df_silver.count()
+    if n == 0:
+        logger.warning("Nenhuma partida com resultado encontrada — silver.partidas preservada.")
+        return 0
+    # append + dedup: não apaga dados históricos inseridos manualmente
+    write_jdbc(df_silver, "silver.partidas", mode="append")
+    # remove duplicatas que possam ter sido inseridas
+    import psycopg2, os
+    conn = psycopg2.connect(
+        host=os.getenv("POSTGRES_HOST", "postgres"), port=os.getenv("POSTGRES_PORT", "5432"),
+        dbname=os.getenv("POSTGRES_DB", "brasileirao"),
+        user=os.getenv("POSTGRES_USER", "postgres"), password=os.getenv("POSTGRES_PASSWORD", "postgres")
+    )
+    cur = conn.cursor()
+    cur.execute("""
+        DELETE FROM silver.partidas a USING silver.partidas b
+        WHERE a.ctid < b.ctid
+          AND a.rodada = b.rodada
+          AND a.clube_casa_id = b.clube_casa_id
+          AND a.clube_vis_id  = b.clube_vis_id
+    """)
+    conn.commit(); conn.close()
+    return n
 
 
 def transform_clubes(spark):
@@ -51,8 +72,24 @@ def transform_clubes(spark):
           .dropDuplicates(["clube_id"])
     )
 
-    write_jdbc(df_silver, "silver.clubes", mode="overwrite")
-    return df_silver.count()
+    n = df_silver.count()
+    if n == 0:
+        logger.warning("Nenhum clube encontrado — silver.clubes preservada.")
+        return 0
+    write_jdbc(df_silver, "silver.clubes", mode="append")
+    import psycopg2, os
+    conn = psycopg2.connect(
+        host=os.getenv("POSTGRES_HOST", "postgres"), port=os.getenv("POSTGRES_PORT", "5432"),
+        dbname=os.getenv("POSTGRES_DB", "brasileirao"),
+        user=os.getenv("POSTGRES_USER", "postgres"), password=os.getenv("POSTGRES_PASSWORD", "postgres")
+    )
+    cur = conn.cursor()
+    cur.execute("""
+        DELETE FROM silver.clubes a USING silver.clubes b
+        WHERE a.ctid < b.ctid AND a.clube_id = b.clube_id
+    """)
+    conn.commit(); conn.close()
+    return n
 
 
 def transform_estatisticas(spark):
