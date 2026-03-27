@@ -20,7 +20,7 @@ renamed as (
     from source
     where clube_id is not null
       and nome     is not null
-    order by clube_id, ingested_at desc
+    order by clube_id
 )
 
 select * from renamed

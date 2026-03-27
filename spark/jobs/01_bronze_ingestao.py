@@ -10,6 +10,9 @@ import logging
 from datetime import datetime
 from pyspark.sql import Row
 from pyspark.sql.functions import lit, current_timestamp, to_json, struct
+from pyspark.sql.types import (
+    StructType, StructField, IntegerType, StringType, LongType
+)
 
 sys.path.insert(0, "/opt/spark-jobs")
 from commons import get_spark, write_jdbc, log_pipeline_execution, log_dq_check, logger
@@ -17,7 +20,7 @@ from commons import get_spark, write_jdbc, log_pipeline_execution, log_dq_check,
 CARTOLA_BASE_URL = "https://api.cartola.globo.com"
 
 
-def fetch_json(endpoint: str) -> dict | list:
+def fetch_json(endpoint: str):
     url = f"{CARTOLA_BASE_URL}/{endpoint}"
     logger.info(f"Chamando API: {url}")
     resp = requests.get(url, timeout=30)
@@ -33,20 +36,35 @@ def ingest_partidas(spark):
         logger.warning("Nenhuma partida retornada pela API.")
         return 0
 
+    schema = StructType([
+        StructField("rodada",        IntegerType(), True),
+        StructField("clube_casa_id", IntegerType(), True),
+        StructField("clube_vis_id",  IntegerType(), True),
+        StructField("placar_casa",   IntegerType(), True),
+        StructField("placar_vis",    IntegerType(), True),
+        StructField("data_partida",  StringType(),  True),   # cast no write_jdbc
+        StructField("status",        StringType(),  True),
+        StructField("raw_payload",   StringType(),  True),
+    ])
+
     rows = []
     for p in partidas:
-        rows.append(Row(
-            rodada=int(p.get("rodada", 0)),
-            clube_casa_id=int(p.get("clube_casa_id", 0)),
-            clube_vis_id=int(p.get("clube_visitante_id", 0)),
-            placar_casa=p.get("placar_oficial_mandante"),
-            placar_vis=p.get("placar_oficial_visitante"),
-            data_partida=p.get("partida_data"),
-            status=str(p.get("partida_status", "")),
-            raw_payload=json.dumps(p, ensure_ascii=False),
+        pc = p.get("placar_oficial_mandante")
+        pv = p.get("placar_oficial_visitante")
+        rows.append((
+            int(p.get("rodada", 0)),
+            int(p.get("clube_casa_id", 0)),
+            int(p.get("clube_visitante_id", 0)),
+            int(pc) if pc is not None else None,
+            int(pv) if pv is not None else None,
+            str(p.get("partida_data", "") or ""),
+            str(p.get("partida_status", "") or ""),
+            json.dumps(p, ensure_ascii=False),
         ))
 
-    df = spark.createDataFrame(rows)
+    from pyspark.sql.functions import to_timestamp, col
+    df = spark.createDataFrame(rows, schema=schema)
+    df = df.withColumn("data_partida", to_timestamp(col("data_partida"), "yyyy-MM-dd HH:mm:ss"))
     write_jdbc(df, "bronze.partidas_raw", mode="append")
     return len(rows)
 
@@ -91,7 +109,14 @@ def ingest_atletas(spark):
 
 def ingest_pontuacoes(spark, rodada: int):
     logger.info(f"Ingestao de pontuacoes da rodada {rodada}...")
-    data = fetch_json(f"atletas/pontuados?rodada={rodada}")
+    try:
+        data = fetch_json(f"atletas/pontuados?rodada={rodada}")
+    except Exception:
+        logger.warning(f"Sem pontuacoes para rodada {rodada}.")
+        return 0
+    if not isinstance(data, dict):
+        logger.warning(f"Resposta invalida para pontuacoes rodada {rodada}.")
+        return 0
     atletas = data.get("atletas", {})
     rows = []
     for atleta_id, a in atletas.items():

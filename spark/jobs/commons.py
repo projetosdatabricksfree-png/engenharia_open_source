@@ -35,7 +35,7 @@ def get_spark(app_name: str) -> SparkSession:
     return (
         SparkSession.builder
         .appName(app_name)
-        .config("spark.jars", "/opt/bitnami/spark/jars/postgresql-42.7.3.jar")
+        .config("spark.jars", "/opt/spark/jars/postgresql-42.7.3.jar")
         .config("spark.sql.adaptive.enabled", "true")
         .config("spark.sql.shuffle.partitions", "8")
         .getOrCreate()

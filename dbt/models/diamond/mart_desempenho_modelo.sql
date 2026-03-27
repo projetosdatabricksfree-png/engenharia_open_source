@@ -37,8 +37,8 @@ por_rodada as (
                                                                as acuracia_visitante_pct,
 
         -- Confianca media nas previsoes corretas vs incorretas
-        round(avg(case when acerto then prob_casa end) * 100, 1)     as conf_media_acerto,
-        round(avg(case when not acerto then prob_casa end) * 100, 1) as conf_media_erro
+        round(cast(avg(case when acerto then prob_casa end) * 100 as numeric), 1)     as conf_media_acerto,
+        round(cast(avg(case when not acerto then prob_casa end) * 100 as numeric), 1) as conf_media_erro
 
     from validadas
     group by rodada
