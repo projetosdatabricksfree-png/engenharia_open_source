@@ -9,6 +9,7 @@ x-airflow-common: &airflow-common
     AIRFLOW__WEBSERVER__SECRET_KEY:       ${AIRFLOW__WEBSERVER__SECRET_KEY}
     AIRFLOW__CORE__LOAD_EXAMPLES:         "false"
     AIRFLOW__WEBSERVER__EXPOSE_CONFIG:    "true"
+    AIRFLOW__API__AUTH_BACKENDS:          "airflow.api.auth.backend.basic_auth"
     # PostgreSQL (para os jobs)
     POSTGRES_HOST:     ${POSTGRES_HOST:-postgres}
     POSTGRES_PORT:     ${POSTGRES_PORT:-5432}

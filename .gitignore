@@ -26,3 +26,18 @@ secrets/
 # OS
 .DS_Store
 Thumbs.db
+
+# Mobile (React Native / Expo)
+mobile/node_modules/
+mobile/dist/
+mobile/dist2/
+mobile/.expo/
+mobile/android/
+mobile/ios/
+mobile/.env
+
+# API
+api/__pycache__/
+
+# Claude
+.claude/

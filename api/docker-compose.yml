@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  brasileirao-api:
+    build: .
+    container_name: brasileirao-api
+    ports:
+      - "8000:8000"
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: brasileirao
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+    networks:
+      - stack-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  stack-net:
+    external: true
